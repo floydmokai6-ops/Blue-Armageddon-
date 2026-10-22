@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Armageddon Scanner</title>
+<style>
+:root{--bg:#0d0716;--card:#1a1030;--line:#2f2150;--p:#a855f7;--p2:#7c3aed;--t:#ede9fe;--m:#9d8fc4;--up:#34d399;--dn:#f43f5e}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(900px 400px at 50% -100px,#2a1255,var(--bg));color:var(--t);font:14px system-ui,sans-serif;min-height:100vh}
+header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line);background:#12091fcc;position:sticky;top:0;backdrop-filter:blur(8px);z-index:5}
+.logo{display:flex;gap:10px;align-items:center}
+.logo i{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--p2),var(--p));box-shadow:0 0 18px #a855f766;display:block}
+.logo b{letter-spacing:.14em;font-size:16px;background:linear-gradient(90deg,#fff,var(--p));-webkit-background-clip:text;background-clip:text;color:transparent}
+.logo small{display:block;color:var(--m);font-size:11px}
+#st{font-size:12px;color:var(--m)}#st:before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--m);margin-right:6px}
+#st.on:before{background:var(--up);box-shadow:0 0 8px var(--up)}
+main{max-width:1200px;margin:auto;padding:14px;display:grid;gap:14px}
+.ctl{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;align-items:end}
+label{display:block;font-size:11px;color:var(--m);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em}
+select,input{width:100%;background:#120a22;border:1px solid var(--line);color:var(--t);border-radius:10px;padding:9px;font:inherit}
+button{background:linear-gradient(135deg,var(--p2),var(--p));color:#fff;border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;width:100%}
+button.s{background:#241545;border:1px solid var(--line)}
+.g{display:grid;gap:14px;grid-template-columns:2fr 1fr}
+@media(max-width:860px){.g{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
+.card h3{margin:0 0 10px;font-size:12px;color:var(--m);text-transform:uppercase;letter-spacing:.08em}
+h4{margin:14px 0 6px;font-size:12px;color:var(--m);text-transform:uppercase}
+.top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+#px{font:700 20px ui-monospace,monospace}
+canvas{width:100%;height:380px;display:block;background:#10081d;border-radius:12px}
+.row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.badge{padding:4px 10px;border-radius:8px;font-weight:800;font-size:12px}
+.up{background:#34d39922;color:var(--up)}.dn{background:#f43f5e22;color:var(--dn)}
+.bar{height:8px;background:#120a22;border-radius:6px;overflow:hidden;margin-bottom:12px}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--p2),#e879f9)}
+.lv{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.lv div{background:#120a22;border:1px solid var(--line);border-radius:10px;padding:8px;font:700 14px ui-monospace,monospace}
+.lv span{display:block;font:11px system-ui;color:var(--m);margin-bottom:2px}
+.m{color:var(--m);font-size:13px}
+ul{margin:0;padding-left:18px}li{margin-bottom:5px;line-height:1.35}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left}th{color:var(--m);font-size:11px;text-transform:uppercase}
+tr.r{cursor:pointer}tr.r:hover{background:#241545}
+footer{color:var(--m);font-size:11px;text-align:center;padding:10px 14px 24px}
+</style></head>
+<body>
+<header>
+<div class="logo"><i></i><div><b>ARMAGEDDON</b><small>Live Chart Scanner</small></div></div>
+<span id="st">Connecting…</span>
+</header>
+<main>
+<div class="card ctl">
+<div><label>Data source</label><select id="src"><option value="dv">Deriv live feed (all markets)</option><option value="bn">Binance (crypto)</option><option value="mt5">MT5 bridge (advanced)</option></select></div>
+<div id="brw"><label>Bridge URL</label><input id="br" value="http://localhost:8765"></div>
+<div><label>Symbol</label><select id="sym"></select></div>
+<div><label>Timeframe</label><select id="tf"><option value="15m">M15</option><option value="1h">H1</option><option value="4h" selected>H4</option><option value="1d">Daily</option></select></div>
+<div><label>Strategy</label><select id="strat"><option value="crt">CRT (sweep &amp; reject)</option><option value="pa">Price Action (S/R)</option><option value="sc">Scalping (EMA cross)</option></select></div>
+<div><label>Risk model</label><select id="rm"><option value="0">Conservative 1.5/3/5R</option><option value="1">Aggressive 2/4/7R</option></select></div>
+<div><label>Account</label><input id="acct" type="number" value="1000"></div>
+<div><label>Risk %</label><input id="rp" type="number" value="1" step="0.1"></div>
+<div><button id="scan">Scan all symbols</button></div>
+</div>
+<div class="g">
+<div class="card"><div class="top"><h3 id="ttl" style="margin:0"></h3><span id="px">–</span></div><canvas id="cv"></canvas></div>
+<div class="card"><h3>Signal</h3><div id="sig" class="m">Loading…</div><button class="s" id="cp" style="margin-top:12px">Copy signal</button></div>
+</div>
+<div class="card"><h3>Scanner results <span id="scT" class="m"></span></h3>
+<table><thead><tr><th>Symbol</th><th>Signal</th><th>Confidence</th><th>Entry</th></tr></thead><tbody id="rows"><tr><td colspan="4" class="m">Press “Scan all symbols”.</td></tr></tbody></table></div>
+</main>
+<footer>Analysis tool only. Signals are not financial advice and are not backtested. Prices stream live from Deriv's public market feed (forex, metals, indices, crypto, synthetics) or Binance. Deriv's synthetic indices are Deriv's own, so they will not match Headway's VOL/STORM prices. Deriv candles carry no volume, so volume is left out of the score.</footer>
+<script>
+const API='https://data-api.binance.vision/api/v3/klines',WS='wss://data-stream.binance.vision/ws/';
+const BN={BTCUSDT:'BTC/USDT',ETHUSDT:'ETH/USDT',SOLUSDT:'SOL/USDT',XRPUSDT:'XRP/USDT',BNBUSDT:'BNB/USDT'};
+let SYMS={},GRP={},D={};
+const $=id=>document.getElementById(id);
+const f=(p,s)=>{const d=D[s||$('sym').value];return d!=null?p.toFixed(d):p>=100?p.toFixed(2):p>=1?p.toFixed(4):p.toFixed(5)};
+let candles=[],sig=null,note='',ws=null,tok=0,poll=null;
+const EP=['wss://ws.derivws.com/websockets/v3?app_id=1089','wss://ws.binaryws.com/websockets/v3?app_id=1089'],GR={'15m':900,'1h':3600,'4h':14400,'1d':86400};
+let sock=null,rid=0,pend={},onOhlc=null,onDrop=null;
+async function dopen(){
+ for(const u of EP){try{
+  const w=await new Promise((ok,no)=>{const w=new WebSocket(u),t=setTimeout(()=>{w.close();no()},6000);w.onopen=()=>{clearTimeout(t);ok(w)};w.onerror=()=>{clearTimeout(t);no()}});
+  w.onmessage=ev=>{const d=JSON.parse(ev.data);if(d.req_id&&pend[d.req_id]){const p=pend[d.req_id];delete pend[d.req_id];d.error?p[1](new Error(d.error.message)):p[0](d)}else if(d.msg_type==='ohlc'&&onOhlc)onOhlc(d.ohlc)};
+  w.onclose=()=>{if(sock===w){sock=null;if(src()==='dv'){setSt('Reconnecting…',false);if(onDrop)setTimeout(onDrop,2000)}}};
+  setInterval(()=>{if(w.readyState===1)w.send('{"ping":1}')},30000);
+  return sock=w}catch(e){}}
+ throw new Error('Deriv feed unreachable')}
+async function dreq(o){const w=sock&&sock.readyState===1?sock:await dopen();return new Promise((ok,no)=>{const id=++rid,t=setTimeout(()=>{delete pend[id];no(new Error('timeout'))},12000);pend[id]=[v=>{clearTimeout(t);ok(v)},e=>{clearTimeout(t);no(e)}];w.send(JSON.stringify({...o,req_id:id}))})}
+async function dcandles(s,tf,n,sub){
+ const d=await dreq({ticks_history:s,adjust_start_time:1,count:n,end:'latest',style:'candles',granularity:GR[tf],...(sub?{subscribe:1}:{})});
+ const cs=(d.candles||[]).map(c=>({t:c.epoch*1000,o:+c.open,h:+c.high,l:+c.low,c:+c.close,v:0}));
+ if(cs.length&&D[s]==null)D[s]=Math.min(6,Math.max(...cs.slice(-50).map(c=>(String(c.c).split('.')[1]||'').length)));
+ return cs}
+function dsub(s,tf,my){setSt('Live (Deriv)',true);onDrop=start;
+ onOhlc=o=>{if(my!==tok||o.symbol!==s||o.granularity!==GR[tf])return;const c={t:o.open_time*1000,o:+o.open,h:+o.high,l:+o.low,c:+o.close,v:0},L=candles[candles.length-1],nb=c.t>L.t;
+  if(nb)candles.push(c);else if(c.t===L.t)candles[candles.length-1]=c;else return;
+  $('px').textContent=f(c.c);nb?run():draw()}}
+const src=()=>$('src').value,br=()=>$('br').value.replace(/\/+$/,'');
+async function loadSyms(){
+ SYMS={};GRP={};D={};
+ if(src()==='bn')Object.keys(BN).forEach(k=>{SYMS[k]=BN[k];GRP[k]='Crypto'});
+ else if(src()==='dv'){(await dreq({active_symbols:'brief',product_type:'basic'})).active_symbols.filter(x=>!x.is_trading_suspended).forEach(x=>{SYMS[x.symbol]=x.display_name+(x.exchange_is_open?'':' (closed)');GRP[x.symbol]=x.market==='synthetic_index'?'Synthetics · '+x.submarket_display_name:x.market==='commodities'?x.submarket_display_name:x.market_display_name})}
+ else{const r=await fetch(br()+'/symbols');if(!r.ok)throw new Error(r.status);(await r.json()).forEach(x=>{SYMS[x.name]=x.name+(x.desc?' · '+x.desc:'');GRP[x.name]=x.group;D[x.name]=x.digits})}
+ const g={};Object.keys(SYMS).forEach(k=>(g[GRP[k]]=g[GRP[k]]||[]).push(k));
+ $('sym').innerHTML=Object.entries(g).map(([n,a])=>`<optgroup label="${n}">${a.map(k=>`<option value="${k}">${SYMS[k]}</option>`).join('')}</optgroup>`).join('');
+ if(src()==='dv'&&SYMS.frxXAUUSD)$('sym').value='frxXAUUSD';
+}
+const parse=k=>({t:k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4],v:+k[5]});
+async function load(s,tf,n=200){if(src()==='dv')return dcandles(s,tf,n);const u=src()==='bn'?`${API}?symbol=${s}&interval=${tf}&limit=${n}`:`${br()}/candles?symbol=${encodeURIComponent(s)}&tf=${tf}&n=${n}`;const r=await fetch(u);if(!r.ok)throw new Error(r.status);return(await r.json()).map(parse)}
+const ema=(a,p)=>{const k=2/(p+1);let e=a[0];return a.map(x=>e=x*k+e*(1-k))};
+const atr=(cs,p=14)=>{let s=0,n=0;for(let i=Math.max(1,cs.length-p);i<cs.length;i++){const c=cs[i],q=cs[i-1];s+=Math.max(c.h-c.l,Math.abs(c.h-q.c),Math.abs(c.l-q.c));n++}return s/n};
+const rsi=(cs,p=14)=>{let g=0,l=0;for(let i=cs.length-p;i<cs.length;i++){const d=cs[i].c-cs[i-1].c;d>0?g+=d:l-=d}return l===0?100:100-100/(1+g/l)};
+
+function analyze(cs,strat,aggr){
+ const cl=cs.slice(0,-1),n=cl.length;
+ if(n<60)return{sig:null,note:'Not enough history.'};
+ const c1=cl[n-1],c2=cl[n-2],A=atr(cl),R=rsi(cl),price=cs[cs.length-1].c;
+ const cls=cl.map(x=>x.c),e50=ema(cls,50)[n-1],e9=ema(cls,9),e21=ema(cls,21);
+ const vavg=cl.slice(-21,-1).reduce((s,x)=>s+x.v,0)/20,rng=c1.h-c1.l||1e-9;
+ const lo=Math.min(...cl.slice(-31,-1).map(x=>x.l)),hi=Math.max(...cl.slice(-31,-1).map(x=>x.h));
+ const mult=aggr?[2,4,7]:[1.5,3,5];let best=null;
+ for(const dir of['BUY','SELL']){
+  const b=dir==='BUY',why=[];let sc=0,mx=0;
+  const add=(ok,pts,t)=>{mx+=pts;if(ok){sc+=pts;why.push(t)}};
+  const wick=b?Math.min(c1.o,c1.c)-c1.l:c1.h-Math.max(c1.o,c1.c);
+  let base;
+  if(strat==='crt'){
+   base=b?(c1.l<c2.l&&c1.c>c2.l&&c1.c<c2.h):(c1.h>c2.h&&c1.c<c2.h&&c1.c>c2.l);
+   add(base,35,b?'Swept the previous candle low and closed back inside its range (CRT fakeout)':'Swept the previous candle high and closed back inside its range (CRT fakeout)');
+  }else if(strat==='pa'){
+   base=b?(c1.l<=lo+A*.3&&c1.c>c1.o):(c1.h>=hi-A*.3&&c1.c<c1.o);
+   add(base,35,b?'Bullish candle closed at 30-bar support':'Bearish candle closed at 30-bar resistance');
+  }else{
+   const k=i=>b?e9[i]>e21[i]:e9[i]<e21[i];
+   base=k(n-1)&&!k(n-3);
+   add(base,35,b?'EMA9 crossed above EMA21 within the last 2 candles':'EMA9 crossed below EMA21 within the last 2 candles');
+  }
+  if(!base)continue;
+  add(wick/rng>.4,15,`Rejection wick is ${(wick/rng*100).toFixed(0)}% of the candle range`);
+  add(b?c1.c>e50:c1.c<e50,15,b?'Price above EMA50 (trend support)':'Price below EMA50 (trend support)');
+  add(b?(R>30&&R<60):(R>40&&R<70),10,`RSI ${R.toFixed(0)} is not stretched against the trade`);
+  if(vavg>0)add(c1.v>vavg*1.2,15,'Volume above the 20-candle average');
+  add(rng>A*.8,10,'Candle range shows real displacement (vs ATR)');
+  let entry=b?c1.c-.3*(c1.c-c1.l):c1.c+.3*(c1.h-c1.c),type=b?'LIMIT':'LIMIT';
+  const sl=b?c1.l-.25*A:c1.h+.25*A;
+  if(b?entry>=price:entry<=price){entry=price;type='MARKET'}
+  if(b?price<=sl:price>=sl)continue;
+  const risk=Math.abs(entry-sl),tps=mult.map(m=>b?entry+risk*m:entry-risk*m);
+  const o={dir,sc:Math.round(sc*100/mx),why,entry,sl,tps,m:mult,type};
+  if(!best||sc>best.sc)best=o;
+ }
+ if(!best)return{sig:null,note:'No setup on the last closed candle.'};
+ if(best.sc<60)return{sig:null,note:`Best candidate scored only ${best.sc}% (minimum 60%), so no signal.`};
+ return{sig:best,note:''};
+}
+
+function renderSig(){
+ const el=$('sig');
+ if(!sig){el.innerHTML=`<div class="m">${note||'No setup right now.'} The scanner keeps watching live and re-checks when each candle closes.</div>`;return}
+ const s=sig,b=s.dir==='BUY',risk=Math.abs(s.entry-s.sl),usd=(+$('acct').value||0)*(+$('rp').value||0)/100,size=usd/risk;
+ el.innerHTML=`<div class="row"><span class="badge ${b?'up':'dn'}">${s.dir} ${s.type}</span><b>${s.sc}% confidence</b></div>
+ <div class="bar"><i style="width:${s.sc}%"></i></div>
+ <div class="lv"><div><span>Entry</span>${f(s.entry)}</div><div><span>Stop loss</span>${f(s.sl)}</div>${s.tps.map((t,i)=>`<div><span>TP${i+1} · ${s.m[i]}R</span>${f(t)}</div>`).join('')}</div>
+ <div class="m">Risking $${usd.toFixed(2)} gives a size of about ${size>=1?size.toFixed(2):size.toPrecision(3)} units.</div>
+ <h4>Why this signal</h4><ul>${s.why.map(w=>`<li>${w}</li>`).join('')}</ul>`;
+}
+
+function draw(){
+ const cv=$('cv'),d=devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;
+ cv.width=W*d;cv.height=H*d;const x=cv.getContext('2d');x.scale(d,d);
+ if(!candles.length)return;
+ const N=Math.min(80,candles.length),v=candles.slice(-N),pw=70;
+ let hi=Math.max(...v.map(c=>c.h)),lo=Math.min(...v.map(c=>c.l));
+ if(sig)[sig.entry,sig.sl,...sig.tps].forEach(p=>{hi=Math.max(hi,p);lo=Math.min(lo,p)});
+ const pad=(hi-lo)*.05;hi+=pad;lo-=pad;
+ const Y=p=>10+(hi-p)/(hi-lo)*(H-20),cw=(W-pw)/N;
+ x.font='11px ui-monospace,monospace';x.textBaseline='middle';
+ for(let i=0;i<=5;i++){const p=lo+(hi-lo)*i/5,y=Y(p);x.strokeStyle='#2f215055';x.beginPath();x.moveTo(0,y);x.lineTo(W-pw,y);x.stroke();x.fillStyle='#9d8fc4';x.fillText(f(p),W-pw+6,y)}
+ v.forEach((c,i)=>{const cx=i*cw+cw/2,up=c.c>=c.o;x.strokeStyle=x.fillStyle=up?'#34d399':'#f43f5e';
+  x.beginPath();x.moveTo(cx,Y(c.h));x.lineTo(cx,Y(c.l));x.stroke();
+  const t=Y(Math.max(c.o,c.c)),h=Math.max(1,Math.abs(Y(c.o)-Y(c.c)));x.fillRect(cx-cw*.35,t,cw*.7,h)});
+ const line=(p,col,lbl)=>{const y=Y(p);x.strokeStyle=col;x.setLineDash([6,4]);x.beginPath();x.moveTo(0,y);x.lineTo(W-pw,y);x.stroke();x.setLineDash([]);
+  x.fillStyle=col;x.fillRect(W-pw,y-9,pw,18);x.fillStyle='#0d0716';x.fillText(lbl,W-pw+4,y)};
+ if(sig){line(sig.entry,'#e879f9','ENTRY');line(sig.sl,'#f43f5e','SL');sig.tps.forEach((t,i)=>line(t,'#34d399','TP'+(i+1)))}
+ const last=candles[candles.length-1].c;line(last,'#a855f7',f(last));
+}
+
+function run(){
+ const r=analyze(candles,$('strat').value,$('rm').value==='1');
+ sig=r.sig;note=r.note;renderSig();draw();
+}
+function setSt(t,on){$('st').textContent=t;$('st').className=on?'on':''}
+
+async function start(){
+ const s=$('sym').value,tf=$('tf').value,my=++tok;
+ if(ws){ws.onclose=null;ws.close()}clearInterval(poll);if(!s)return;
+ $('ttl').textContent=`${SYMS[s]} · ${$('tf').selectedOptions[0].text}`;
+ setSt('Loading…',false);
+ try{if(src()==='dv'){try{await dreq({forget_all:'candles'})}catch(e){}candles=await dcandles(s,tf,200,true)}else candles=await load(s,tf)}catch(e){setSt('Offline',false);$('sig').textContent=src()==='bn'?'Could not reach Binance.':src()==='dv'?'Could not load candles from the Deriv feed. Check your connection, or pick another symbol (its market may be closed).':'Could not load candles from the MT5 bridge. Make sure bridge.py is running and MT5 is logged in.';return}
+ if(my!==tok)return;
+ $('px').textContent=f(candles[candles.length-1].c);run();
+ const conn=()=>{
+  ws=new WebSocket(`${WS}${s.toLowerCase()}@kline_${tf}`);
+  ws.onopen=()=>setSt('Live',true);
+  ws.onmessage=ev=>{if(my!==tok)return;const k=JSON.parse(ev.data).k,c=parse([k.t,k.o,k.h,k.l,k.c,k.v]),L=candles[candles.length-1],nb=c.t!==L.t;
+   if(nb)candles.push(c);else candles[candles.length-1]=c;
+   $('px').textContent=f(c.c);
+   if(nb||k.x)run();else draw();};
+  ws.onclose=()=>{if(my===tok){setSt('Reconnecting…',false);setTimeout(()=>my===tok&&conn(),3000)}};
+ };
+ if(src()==='bn')conn();
+ else if(src()==='dv')dsub(s,tf,my);
+ else poll=setInterval(async()=>{if(my!==tok)return;try{const a=await load(s,tf,3);setSt('Live (MT5)',true);let nb=false;a.forEach(c=>{const L=candles[candles.length-1];if(c.t===L.t)candles[candles.length-1]=c;else if(c.t>L.t){candles.push(c);nb=true}});$('px').textContent=f(candles[candles.length-1].c);nb?run():draw()}catch(e){setSt('Bridge offline',false)}},2000);
+}
+
+async function scanAll(){
+ const tf=$('tf').value,st=$('strat').value,ag=$('rm').value==='1',tb=$('rows'),cur=$('sym').value,list=Object.keys(SYMS).filter(k=>GRP[k]===GRP[cur]).slice(0,30);
+ tb.innerHTML='<tr><td colspan="4" class="m">Scanning…</td></tr>';
+ const rows0=[];for(const s of list){try{rows0.push({s,r:analyze(await load(s,tf,150),st,ag)})}catch(e){}}
+ const rows=rows0.sort((a,b)=>(b.r.sig?.sc||0)-(a.r.sig?.sc||0));
+ $('scT').textContent=`· ${GRP[cur]||''} · ${new Date().toLocaleTimeString()}`;
+ tb.innerHTML=rows.map(({s,r})=>`<tr class="r" data-s="${s}"><td>${SYMS[s]}</td>`+(r.sig?`<td><span class="badge ${r.sig.dir==='BUY'?'up':'dn'}">${r.sig.dir} ${r.sig.type}</span></td><td>${r.sig.sc}%</td><td>${f(r.sig.entry,s)}</td>`:`<td class="m" colspan="3">No setup</td>`)+'</tr>').join('')||'<tr><td colspan="4" class="m">Could not load data.</td></tr>';
+}
+$('rows').onclick=e=>{const tr=e.target.closest('tr.r');if(tr){$('sym').value=tr.dataset.s;start()}};
+async function init(){
+ $('brw').style.display=src()==='mt5'?'':'none';
+ try{localStorage.br=$('br').value}catch(e){}
+ try{await loadSyms()}catch(e){setSt('Offline',false);$('sig').textContent=src()==='mt5'?'Could not reach the MT5 bridge at '+br()+'. Start bridge.py on the PC running MT5, or switch the source to Deriv.':'Could not reach the market feed. Check your connection and reload.';return}
+ start();
+}
+$('sym').onchange=$('tf').onchange=start;
+$('src').onchange=$('br').onchange=init;
+$('strat').onchange=$('rm').onchange=run;
+$('acct').oninput=$('rp').oninput=renderSig;
+$('scan').onclick=scanAll;
+$('cp').onclick=()=>{if(!sig)return;const s=sig;navigator.clipboard.writeText(`ARMAGEDDON ${SYMS[$('sym').value]} ${$('tf').value}\n${s.dir} ${s.type} (${s.sc}%)\nEntry ${f(s.entry)}\nSL ${f(s.sl)}\n${s.tps.map((t,i)=>`TP${i+1} ${f(t)}`).join('\n')}`);$('cp').textContent='Copied';setTimeout(()=>$('cp').textContent='Copy signal',1200)};
+addEventListener('resize',draw);
+try{if(localStorage.br)$('br').value=localStorage.br}catch(e){}
+init();
+</script>
+</body></html>
